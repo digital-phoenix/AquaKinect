@@ -1,0 +1,1 @@
+This is a readme file needed to get AquaKinect installed on your machine:
