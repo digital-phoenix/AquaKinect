@@ -1,13 +1,11 @@
-#ifndef XNV_POINT_DRAWER_H_
-#define XNV_POINT_DRAWER_H_
+#ifndef _POINT_HANDLER_
+#define _POINT_HANDLER_
 
 #include <map>
 #include <list>
 #include <XnCppWrapper.h>
 #include <XnVPointControl.h>
 
-#include <windows.h>
-#include<gl/glew.h>
 
 #define DEBUG_PRINT true
 /**

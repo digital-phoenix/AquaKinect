@@ -4,6 +4,9 @@
 
 #include<iostream>
 #include"ShaderLoader.h"
+#include"Vector.h"
+#include"Matrix.h"
+#include"Matrix4f.h"
 
 // Headers for OpenNI
 #include <XnOpenNI.h>
@@ -71,7 +74,7 @@ GLuint programObject;
 
 GLuint buffer;
 
-XnPoint3D position = {0, 0, 0};
+Vector position = Vector();
 
 float vertices[] = { 0.0, 0.0, 0.0, 1.0,
 					10.0, 10.0, 0.0, 1.0,
@@ -93,60 +96,6 @@ void PrintSessionState(SessionState eState)
 			break;
 	}
 
-}
-
-void printMatrix(GLfloat matrix[16]){
-	for(int rows=0; rows<4; rows++){
-		for(int cols = 0; cols<4; cols++){
-			std::cout<< matrix[cols * 4 + rows] << " ";
-		}
-		std::cout<<"\n";
-	}
-}
-
-void identity(GLfloat matrix[16]){
-	GLfloat val;
-	for( int i =0; i< 4; i++){
-		for( int j = 0; j < 4; j++){
-			if( i == j)
-				val = 1;
-			else 
-				val = 0;
-
-			matrix[i * 4 + j] = val;
-		}
-	}
-}
-
-void Ortho( GLfloat matrix[16], GLfloat left, GLfloat right, GLfloat bottom, GLfloat top, GLfloat nearVal, GLfloat farVal){
-	identity(matrix);
-	matrix[0] = 2 / (right - left);
-	matrix[ 1 + 4] = 2 / ( top - bottom);
-	matrix[ 2 + 4 * 2] = -2 / ( farVal - nearVal);
-	matrix[ 3 + 4 * 3] = 1;
-	matrix[ 4 * 3] = -( right + left) / ( right - left);
-	matrix[ 1 + 4 * 3] = -( top + bottom) / ( top - bottom);
-	matrix[ 2 + 4 * 3] = -( farVal + nearVal) / ( farVal - nearVal);
-}
-
-void translateMatrix(GLfloat matrix[16], GLfloat x, GLfloat y, GLfloat z){
-	identity(matrix);
-	matrix[4 * 3 + 0] = x;
-	matrix[4 * 3 + 1] = y;
-	matrix[4 * 3 + 2] = z;
-}
-
-void multiplyMatrix(GLfloat result[16], GLfloat matrix[16], GLfloat otherMatrix[16]){
-	
-	for( int cols = 0; cols < 4; cols++){
-		for( int rows = 0; rows < 4; rows++){
-			GLfloat val = 0;
-			for( int i=0; i<4; i++){
-				val += matrix[i * 4 + rows] * otherMatrix[cols * 4 + i]; 
-			}
-			result[cols * 4 + rows] = val;
-		}
-	}
 }
 
 void setupVAO(){
@@ -218,7 +167,8 @@ void XN_CALLBACK_TYPE GestureProgressHandler(xn::GestureGenerator& generator, co
 }
 
 int configKinect(){
-		XnStatus rc = XN_STATUS_OK;
+		
+	XnStatus rc = XN_STATUS_OK;
 	xn::EnumerationErrors errors;
 
 	// Initialize OpenNI
@@ -258,58 +208,32 @@ int configKinect(){
 	return rc;
 }
 
-XnPoint3D normalize( XnPoint3D vector){
-
-	GLfloat mag = sqrt( vector.X * vector.X + vector.Y * vector.Y + vector.Z * vector.Z);
-
-	if( mag == 0) mag+= 0.001;
-
-	vector.X /= mag;
-	vector.Y /= mag;
-	vector.Z /= mag;
-
-	return vector;
-}
-
-void vectorPrint(XnPoint3D vector){
-	std::cout<<"\n vector:\n( " << vector.X << " " << vector.Y << " " << vector.Z << ")\n";
-}
-
-XnPoint3D vectorAdd( XnPoint3D vector, XnPoint3D other){
-
-	vector.X += other.X;
-	vector.Y += other.Y;
-	vector.Z += other.Z;
-
-	return vector;
-}
-
 void draw() {
 	glClear( GL_COLOR_BUFFER_BIT );
 
 	XnMapOutputMode mode;
 	g_DepthGenerator.GetMapOutputMode(mode);
 
-	GLfloat projectionMatrix[16];
-	Ortho(projectionMatrix, 0, mode.nXRes, mode.nYRes, 0, -1.0, 1.0);
+	Matrix4f projectionMatrix = Matrix4f();
+	projectionMatrix.Ortho(0, mode.nXRes, mode.nYRes, 0, -1.0, 1.0);
 
-	XnPoint3D primaryPoint = pointHandler->getPrimaryPoint();
-	XnPoint3D movement = { primaryPoint.X - position.X, primaryPoint.Y - position.Y, primaryPoint.Z - position.Z };
+	Vector primaryPoint;
+	primaryPoint = pointHandler->getPrimaryPoint();
+	Vector movement = primaryPoint - position;
+	movement.normalize();
+	position += movement;
+	position.print();
 
-	movement = normalize(movement);
-	position = vectorAdd(position, movement);
-	vectorPrint(position);
+	Matrix4f modelViewMatrix;
+	modelViewMatrix.translate(position.getX(), position.getY(), 0);
 
-	GLfloat modelViewMatrix[16];
-	translateMatrix(modelViewMatrix, position.X, position.Y, 0);
-
-	GLfloat modelViewProjectionMatrix[16];
-	multiplyMatrix(modelViewProjectionMatrix, projectionMatrix, modelViewMatrix);
+	Matrix4f modelViewProjectionMatrix;
+	modelViewProjectionMatrix = projectionMatrix * modelViewMatrix;
 	//glUniformMatrix4fv(matLoc, 1, GL_FALSE, modelViewProjectionMatrix); 
 	// Use our shader
 	glUseProgram(programObject);
 
-	glUniformMatrix4fv(matLoc, 1, false, modelViewProjectionMatrix);
+	modelViewProjectionMatrix.uniformMatrix(matLoc);
 
 	// Draw the triangle
 	glDrawArrays(GL_LINE_LOOP, 0, 3);
@@ -334,22 +258,55 @@ void processEvent(SDL_Event* Event) {
 }
 
 
-void testMatrices( GLfloat test[16], GLfloat otherTest[16]){
-	GLfloat result[16];
+void testMatrices( Matrix4f test, Matrix4f otherTest){
+	Matrix4f result;
+
 
 	std::cout<<"test:\n";
-	printMatrix(test);
-	std::cout<<"other test:\n";
-	printMatrix(otherTest);
-	multiplyMatrix(result, test, otherTest);
+	test.print();
+ 	std::cout<<"other test:\n";
+	otherTest.print();
+	result = test * otherTest;
 	std::cout<<"test * other test =\n";
-	printMatrix(result);
+	result.print();
 
+	result.identity();
+	std::cout<<"identity\n";
+	result.print();
+
+	result = test + otherTest;
+	std::cout<<"test + otherTest\n";
+	result.print();
+
+	result.Ortho(0, 10, 0, 10, -1, 1);
+	std::cout<<"ortho(0,10,0,10,-1,1)\n";
+	result.print();
+
+	Vector r = result * Vector(10,0,0);
+	std::cout<<"orthor * (10,0,0)\n";
+	r.print();
+
+	r = result * Vector(0,10,0);
+	std::cout<<"orthor * (0, 10,0)\n";
+	r.print();
+
+	r = result * Vector(0,0,10);
+	std::cout<<"orthor * (1,0,0)\n";
+	r.print();
+
+	result.translate(10, 20, 30);
+	std::cout<<"translate(10,20,30)\n";
+	result.print();
 }
 
 bool init() {
 
+/*	Matrix4f t;
+	t.identity();
+	Matrix4f t2;
+	t2.Ortho(0, 100, 0, 100, -1, 1);
 	
+	testMatrices(t, t2);*/
 	if( configKinect() != XN_STATUS_OK ){
 		std::cout<<"failed to configure kinect";
 		return false;
