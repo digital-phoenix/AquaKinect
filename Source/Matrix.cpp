@@ -1,6 +1,47 @@
 #include"Matrix.h"
 #include<iostream>
 
+/*void testMatrices( Matrix4f test, Matrix4f otherTest){
+	Matrix4f result;
+
+
+	std::cout<<"test:\n";
+	test.print();
+ 	std::cout<<"other test:\n";
+	otherTest.print();
+	result = test * otherTest;
+	std::cout<<"test * other test =\n";
+	result.print();
+
+	result.identity();
+	std::cout<<"identity\n";
+	result.print();
+
+	result = test + otherTest;
+	std::cout<<"test + otherTest\n";
+	result.print();
+
+	result.Ortho(0, 10, 0, 10, -1, 1);
+	std::cout<<"ortho(0,10,0,10,-1,1)\n";
+	result.print();
+
+	Vector r = result * Vector(10,0,0);
+	std::cout<<"orthor * (10,0,0)\n";
+	r.print();
+
+	r = result * Vector(0,10,0);
+	std::cout<<"orthor * (0, 10,0)\n";
+	r.print();
+
+	r = result * Vector(0,0,10);
+	std::cout<<"orthor * (1,0,0)\n";
+	r.print();
+
+	result.translate(10, 20, 30);
+	std::cout<<"translate(10,20,30)\n";
+	result.print();
+}*/
+
 Matrix::Matrix(int rows, int cols){
 	this->rows = rows;
 	this->cols = cols;

@@ -126,8 +126,9 @@ GLfloat Vector::magnitude(){
 
 Vector & Vector::normalize(){
 	GLfloat mag = magnitude();
-	if( mag < 0.00001){
-		mag += 0.00001;
+	// magnitude should always be greater than 0
+	if( mag < 0.00001){ 
+		mag = 0.00001;
 	}
 	return (*this) *= 1/mag;
 }
